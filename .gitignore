@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.vscode/
+
+# draft with all days at once, kept for reference
+draft_all_days.py
+_old/
