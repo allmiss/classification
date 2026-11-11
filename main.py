@@ -2,6 +2,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+from preprocess import preprocess_text, LABEL2ID
+
+
 df = pd.read_csv("data.csv")
 df = df.rename(columns={"Sentence": "text", "Sentiment": "sentiment"})
 
@@ -37,5 +40,34 @@ for sentiment in df['sentiment'].unique():
     for example in df[df['sentiment'] == sentiment]['text'].sample(3, random_state=42):
         print(f'Example - {example}')
 
-with open('reports/day_1_observations.md', 'wb') as file:
-    file.write()
+
+df['text_clean'] = df['text'].apply(preprocess_text)
+
+rows_before = len(df)
+df = df[df['text_clean'].str.len() > 0]
+print(f"Удалено пустых после очистки: {rows_before - len(df)}")
+
+rows_before = len(df)
+df = df.drop_duplicates(subset=['text_clean', 'sentiment'])
+print(f"Удалено полных дубликатов: {rows_before - len(df)}")
+
+print(f"Осталось строк: {len(df)}")
+
+
+df['label'] = df['sentiment'].map(LABEL2ID)
+print(f"Неизвестных меток: {df['label'].isnull().sum()}")
+print(df[['sentiment', 'label']].value_counts())
+
+
+checks = {
+    'ссылка': df['text'].str.contains('http'),
+    'кавычки': df['text'].str.contains('``', regex=False),
+    'пробел перед знаком': df['text'].str.contains(' , ', regex=False),
+    "отдельное 's": df['text'].str.contains(" 's", regex=False)
+}
+for name, mask in checks.items():
+    print(f"\n=== {name} ===")
+    for _, row in df[mask].head(2).iterrows():
+        print(f"ДО:     {row['text']}")
+        print(f"ПОСЛЕ:  {row['text_clean']}")
+        print()
