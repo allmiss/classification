@@ -1,7 +1,12 @@
+import json
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, f1_score, classification_report
 from preprocess import preprocess_text, LABEL2ID
 
 
@@ -71,3 +76,57 @@ for name, mask in checks.items():
         print(f"ДО:     {row['text']}")
         print(f"ПОСЛЕ:  {row['text_clean']}")
         print()
+
+
+train_df, test_df = train_test_split(
+    df, test_size=.2, random_state=42, stratify=df['label']
+)
+print(f"\nTrain: {len(train_df)} строк, Test: {len(test_df)} строк")
+print("Доли классов в train:")
+print(train_df['label'].value_counts(normalize=True).sort_index())
+print("Доли классов в test:")
+print(test_df['label'].value_counts(normalize=True).sort_index())
+
+
+vectorizer = TfidfVectorizer(max_features=5000, ngram_range=(1, 2))
+X_train = vectorizer.fit_transform(train_df['text_clean'])
+X_test = vectorizer.transform(test_df['text_clean'])
+y_train = train_df['label'].values
+y_test = test_df['label'].values
+
+print(f"\nX_train: {X_train.shape}, X_test: {X_test.shape}")
+print(f"Размер словаря: {len(vectorizer.vocabulary_)}")
+print(f"Пример признако: {vectorizer.get_feature_names_out()[:15]}")
+
+
+model = LogisticRegression(max_iter=1000, random_state=42)
+model.fit(X_train, y_train)
+y_pred = model.predict(X_test)
+
+print(f"\nПервые 10 предсказаний: {y_pred[:10]}")
+print(f"\nПервые 10 правильных: {y_test[:10]}")
+
+accuracy = accuracy_score(y_test, y_pred)
+macro_f1 = f1_score(y_test, y_pred, average='macro')
+
+print(f"\nAccuracy: {accuracy:.4f}")
+print(f"Macro F1: {macro_f1:.4f}")
+print(classification_report(y_test, y_pred, target_names=list(LABEL2ID.keys())))
+
+
+baseline_results = {
+    'model': 'TF-IDF (1,2), max_features=5000 + LogisticRegression',
+    'accuracy': round(accuracy, 4),
+    'macro_f1': round(macro_f1, 4),
+    'train_size': len(train_df),
+    'test_size': len(test_df),
+}
+
+with open('reports/baseline_metrics.json', 'w', encoding='utf-8') as f:
+    json.dump(baseline_results, f, ensure_ascii=False, indent=2)
+
+with open('reports/baseline_report.txt', 'w', encoding='utf-8') as f:
+    f.write(classification_report(y_test, y_pred, target_names=list(LABEL2ID.keys())))
+
+print("Baseline результаты сохранены в reports/")
+

@@ -1,0 +1,7 @@
+{
+  "model": "TF-IDF (1,2), max_features=5000 + LogisticRegression",
+  "accuracy": 0.6881,
+  "macro_f1": 0.5415,
+  "train_size": 4664,
+  "test_size": 1167
+}
